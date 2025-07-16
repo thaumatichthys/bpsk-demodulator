@@ -12,7 +12,7 @@ BW_LIMIT = 2500
 PRN_SEED = 1
 
 
-RX_CARRIER_CENTER = 3000
+RX_CARRIER_CENTER = 3004
 
 def lowpass_filter(data, samplerate, cutoff, order=8):
     """

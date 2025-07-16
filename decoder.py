@@ -45,8 +45,6 @@ q_early_filt = IIRFilter(cutoff_frac)
 i_late_filt = IIRFilter(cutoff_frac)
 q_late_filt = IIRFilter(cutoff_frac)
 
-sig_out_filt = IIRFilter(cutoff_frac)
-
 i_early_integrator = Integrator()
 q_early_integrator = Integrator()
 i_late_integrator = Integrator()
@@ -76,12 +74,13 @@ for i in range(len(times)):
     prn = (prng.getSample0() - 0.5) * 2
     prng.advancePhase()
 
+    despread_i = i_filt.pushValue(i_sig * prn)
+    despread_q = q_filt.pushValue(q_sig * prn)
+
     demodulated = 0
 
     if receiver_state == RX_STATE_ACQ:
         # acquire
-        despread_i = i_filt.pushValue(i_sig * prn)
-        despread_q = q_filt.pushValue(q_sig * prn)
 
         i_integrator.accumulate(despread_i * despread_i)
         q_integrator.accumulate(despread_q * despread_q)
@@ -112,7 +111,7 @@ for i in range(len(times)):
         q_early_despread = i_early_filt.pushValue(q_sig * prn_early)
         i_late_despread = i_late_filt.pushValue(i_sig * prn_late)
         q_late_despread = i_late_filt.pushValue(q_sig * prn_late)
-        demodulated = sig_out_filt.pushValue(i_sig * prn_aligned) * 20
+        demodulated = despread_i * 20
 
         i_early_integrator.accumulate(i_early_despread * i_early_despread)
         q_early_integrator.accumulate(q_early_despread * q_early_despread)
@@ -133,7 +132,7 @@ for i in range(len(times)):
 
             d_term = derivator.pushValue(alignment_error)
 
-            error_output = alignment_error # - 0.1 * d_term
+            error_output = alignment_error - 0.1 * d_term
 
             prng.advancePhaseSamples(error_output)
 
@@ -141,9 +140,18 @@ for i in range(len(times)):
             dummy1 = alignment_error * 10
             print(f"alignment error: {alignment_error}")
 
+        # costas loop
+        constellation_error = despread_i * despread_q  # no loop filter required! (apart from an integrator)
+        # apply scaling function (makes loop converge faster)
+        constellation_error = np.arctan(constellation_error)
+        # loop filter (integrator)
+        loop_correction += -0.001 * constellation_error
+        # end of costas loop demodulator
+        # print(f"loop correction: {loop_correction}")
+
     dummy2plot.append(dummy2)
     output.append(demodulated * 10)
-    # outbits.append(despread_q)
+    outbits.append(loop_correction)
     baseband.append(dummy1)
 
 
