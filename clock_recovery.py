@@ -1,4 +1,9 @@
-
+from pfd import *
+from scipy.io import wavfile
+import matplotlib.pyplot as plt
+import numpy as np
+from parameters import *
+from iirfilter import *
 
 class ClockRecovery:
     # samples early and late, if one of the early or late ones is different from the rest, increase clock speed, and vice versa
@@ -43,3 +48,33 @@ class ClockRecovery:
         return self.output
 
 
+class ClockPLL2:
+    def __init__(self, samplerate, bit_freq, bitrate_dev):
+
+        self.input_filter = IIR_BPF(4, samplerate, bit_freq - bitrate_dev, bit_freq + bitrate_dev)
+
+
+        self.bit_freq = bit_freq
+        self.samplerate = samplerate
+        self.bitrate_dev = bitrate_dev
+        self.loop_correction = 0
+        self.pfd = PFD()
+        self.dummy = 0
+
+        self.dc_remove_accumulate = 0
+        self.dc_remove_n = 0
+
+
+    def update(self, input_val, lo_in):  # LO must be a clean sinusoid with zero DC offset.
+        dc_removed = input_val - self.dc_remove_accumulate / self.dc_remove_n
+        cleaned = self.input_filter.pushValue(input_val)
+        self.dummy = cleaned
+        print(cleaned)
+        zero_cross = np.sign(cleaned)  # turns into square wave
+        local = np.sign(lo_in)
+        error = 0.00025 * (self.pfd.update(local, zero_cross))
+        self.loop_correction -= error
+
+        if np.abs(self.loop_correction) > self.bitrate_dev:
+            self.loop_correction = self.bitrate_dev * self.loop_correction / np.abs(self.loop_correction)
+        return self.loop_correction

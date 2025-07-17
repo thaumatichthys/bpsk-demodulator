@@ -89,8 +89,8 @@ peak_finder = PeakFinder(SEQ_LEN, PEAK_FINDER_MIN_ABOVE_AVERAGE)
 
 # vars for data clock recovery
 edge_det = Derivator()
-clock_recovery = ClockRecovery(CARRIER_SAMPLERATE, DATA_BITRATE)
-
+clock_recovery_pll = ClockPLL2(CARRIER_SAMPLERATE, DATA_BITRATE, 10)
+clock_recovery_loop_correction = 0
 output_bits = []
 # end vars for data clock recovery
 
@@ -193,29 +193,31 @@ for i in range(len(times)):
 
             prng.advancePhaseSamples(error_output)
 
-            # print(f"alignment error: {error_output}")
+            print(f"alignment error: {error_output}")
 
         data_bit = np.sign(demodulated)
 
 
 
         # clock recovery system
-        clock_bit = clock_recovery.update(data_bit)
-        edges = np.abs(edge_det.pushValue(clock_bit))
+        edges = np.abs(edge_det.pushValue(data_bit))
+        clock_LO = np.cos(2 * np.pi * (DATA_BITRATE + clock_recovery_loop_correction) * t)
+        clock_recovery_loop_correction = clock_recovery_pll.update(edges, clock_LO)
+
 
         if edges > 0:
             output_bits.append(int(data_bit / 2 + 1))
 
-        dummy2 = clock_bit + 2.2
+        dummy2 = clock_LO + 2.2
 
         dummy3 = data_bit
-        # dummy3 = error_filt.pushValue(i_sig)
+        dummy3 = clock_recovery_pll.dummy
 
 
     dummy2plot.append(dummy2)
     dummy3plot.append(dummy3)
     # output.append(demodulated * 10)
-    outbits.append(loop_correction)
+    outbits.append(clock_recovery_loop_correction)
     # baseband.append(dummy1)
 
 
