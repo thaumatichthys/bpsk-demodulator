@@ -27,63 +27,45 @@ class SquaringLoop:
         squared = input_val * input_val
         cleaned = self.input_filter.pushValue(squared)
         zero_cross = np.sign(cleaned)  # turns into square wave
-        #phase_coeff = 2 * np.pi * (2 * self.carrier_freq + self.loop_correction)
-        #local = np.sign(np.cos(phase_coeff * self.t))  # LO
-        lo_in = lo_in * lo_in - 1/2 # this is very crude but whatever
+        lo_in = lo_in * lo_in - 1/2  # this is very crude but whatever
         local = np.sign(lo_in)
-        error = 0.0015 * self.loop_filter.pushValue(self.pfd.update(local, zero_cross))
-        # error = 0.00015 * (self.pfd.update(local, zero_cross))
+        error = 0.00025 * (self.pfd.update(local, zero_cross))
+        # error = 0.00015 * self.loop_filter.pushValue(self.pfd.update(local, zero_cross))
         self.loop_correction -= error
 
         if np.abs(self.loop_correction) > self.max_dev:
             self.loop_correction = self.max_dev * self.loop_correction / np.abs(self.loop_correction)
         return self.loop_correction
-        #
-        # self.t += 1/self.samplerate
-        # # cos(a * t)
-        # # at = 2pi
-        # # t = 2pi/a
-        # # self.t %= 2 * np.pi / phase_coeff
-        #
-        # # make output freq
-        #
-        # if self.local_prev_state < 0 and local > 0:  # frequency divider
-        #     self.out *= -1
-        # self.local_prev_state = local
-        #
-        # filtered = self.output_filter.pushValue(self.out)
-        #
-        # return filtered
 
 
 
 # test function
 
-samplerate, data = wavfile.read("output.wav")
-dut = SquaringLoop(samplerate, RX_CARRIER_CENTER, 50)
-
-duration = len(data) / samplerate
-
-times = np.linspace(0, duration, len(data))
-
-output = []
-loop_corr = []
-loop_correction = 0
-
-for i in range(len(data)):
-    input = data[i]
-    t = times[i]
-
-    lo = np.cos(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t)
-    loop_correction = dut.update(input, lo)
-
-
-    loop_corr.append(loop_correction)
-    output.append(lo)
-
-
-
-plt.plot(output)
-plt.plot(data)
-plt.plot(loop_corr)
-plt.show()
+# samplerate, data = wavfile.read("output.wav")
+# dut = SquaringLoop(samplerate, RX_CARRIER_CENTER, 20)
+#
+# duration = len(data) / samplerate
+#
+# times = np.linspace(0, duration, len(data))
+#
+# output = []
+# loop_corr = []
+# loop_correction = 0
+#
+# for i in range(len(data)):
+#     input = data[i]
+#     t = times[i]
+#
+#     lo = np.cos(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t)
+#     loop_correction = dut.update(input, lo)
+#
+#
+#     loop_corr.append(loop_correction)
+#     output.append(lo)
+#
+#
+#
+# plt.plot(output)
+# plt.plot(data)
+# plt.plot(loop_corr)
+# plt.show()

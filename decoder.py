@@ -112,7 +112,7 @@ for i in range(len(times)):
         # loop_correction += -0.00005 * constellation_error
         # end of costas loop demodulator
     else:
-        loop_correction = -squaring_loop.update(input, LO_i)
+        loop_correction = squaring_loop.update(input, LO_i)
         #loop_correction = squaring_loop.loop_correction
 
 

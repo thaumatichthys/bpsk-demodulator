@@ -8,29 +8,24 @@ class PFD:
         self.down = 0
 
     def update(self, ref, inp):
-        # Rising edges
-        ref_edge = False
-        if ref > 0 and self.prev_ref < 0:
-            ref_edge = True
-        in_edge = False
-        if inp > 0 and self.prev_in < 0:
-            in_edge = True
-        # ref_edge = ref and not self.prev_ref
-        # in_edge = inp and not self.prev_in
+        # Detect rising edges
+        ref_edge = ref > 0 and self.prev_ref <= 0
+        in_edge = inp > 0 and self.prev_in <= 0
 
+        # Latch UP and DOWN on their respective rising edges
         if ref_edge:
             self.up = 1
-            self.down = 0  # clear DOWN on REF edge
         if in_edge:
             self.down = 1
-            self.up = 0  # clear UP on IN edge
 
-        # Lock condition: both edges came
-        if ref_edge and in_edge:
+        # Reset both if both were set (AND gate)
+        if self.up and self.down:
             self.up = 0
             self.down = 0
 
+        # Save previous values
         self.prev_ref = ref
         self.prev_in = inp
 
+        # Output is UP - DOWN, just like a charge pump would convert it
         return self.up - self.down
