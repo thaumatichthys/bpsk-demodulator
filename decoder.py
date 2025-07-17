@@ -51,15 +51,26 @@ i_late_integrator = Integrator()
 q_late_integrator = Integrator()
 
 seq_len_samplerate = DATA_BITRATE * CHIP_RATE / SEQ_LEN
-# make this filter 1/4 of sequence frequency
-error_filt = IIRFilter(1/8)
+# make this filter 1/4 of sequence frequency (filter for the dsss track)
+error_filt = IIRFilter(1/16)
+# dummy_integrator = Integrator()
 
 dummy2 = 0
 dummy2plot = []
 
+dummy3 = 0
+dummy3plot = []
+
 derivator = Derivator()
 # end variables for tracking
 
+# variables for costas loop
+costas_cutoff_frac = 2 * (CHIP_RATE * DATA_BITRATE) / CARRIER_SAMPLERATE
+# loop_filter = IIRFilter(1/10)
+costas_i_filter = IIRFilter(costas_cutoff_frac)
+costas_q_filter = IIRFilter(costas_cutoff_frac)
+
+# end variables for costas loop
 prng.advancePhaseSamples(-43112)
 
 for i in range(len(times)):
@@ -97,10 +108,9 @@ for i in range(len(times)):
             if correlation_energy > 400:
                 # alignment found
                 receiver_state = RX_STATE_TRACK
-
-
-            prng.advancePhaseHalfPeriod()
-            dummy1 = correlation_energy
+            else:
+                prng.advancePhaseHalfPeriod()
+            # dummy1 = correlation_energy
     else:
         # track
         prn_early = (prng.getSample45() - 0.5) * 2
@@ -111,7 +121,8 @@ for i in range(len(times)):
         q_early_despread = i_early_filt.pushValue(q_sig * prn_early)
         i_late_despread = i_late_filt.pushValue(i_sig * prn_late)
         q_late_despread = i_late_filt.pushValue(q_sig * prn_late)
-        demodulated = despread_i * 20
+        demodulated = despread_i
+        # demodulated = i_early_despread * 20
 
         i_early_integrator.accumulate(i_early_despread * i_early_despread)
         q_early_integrator.accumulate(q_early_despread * q_early_despread)
@@ -128,28 +139,43 @@ for i in range(len(times)):
             correlation_energy_late = i_late_integral + q_late_integral
 
             alignment_error_raw = correlation_energy_late - correlation_energy_early
-            alignment_error = error_filt.pushValue(alignment_error_raw) / 10
+            # alignment_error = error_filt.pushValue(alignment_error_raw)
+            alignment_error = (alignment_error_raw)
 
             d_term = derivator.pushValue(alignment_error)
 
-            error_output = alignment_error - 0.1 * d_term
+            error_output = -(0.015 * alignment_error + 0.001 * d_term)
+
+            MAX_ERROR_OUT = 0.2
+            if np.abs(error_output) > MAX_ERROR_OUT:
+                error_output = error_output * MAX_ERROR_OUT / np.abs(error_output)
 
             prng.advancePhaseSamples(error_output)
 
-            dummy2 = d_term * 10
-            dummy1 = alignment_error * 10
-            print(f"alignment error: {alignment_error}")
+            # dummy2 = d_term * 0.01 * 1000
+            # dummy1 = alignment_error * 0.001 * 1000
+            # dummy1 = error_output
+            print(f"alignment error: {error_output}")
 
-        # costas loop
-        constellation_error = despread_i * despread_q  # no loop filter required! (apart from an integrator)
-        # apply scaling function (makes loop converge faster)
-        constellation_error = np.arctan(constellation_error)
-        # loop filter (integrator)
-        loop_correction += -0.001 * constellation_error
-        # end of costas loop demodulator
         # print(f"loop correction: {loop_correction}")
+        #dummy1 = prn_early - 2.5
+        #dummy2 = prn_late + 2.5
+        dummy2 = prn_aligned - 2.5
+        dummy3 = error_filt.pushValue(i_sig)
 
+    # costas loop
+    i_sig_filtered = costas_i_filter.pushValue(i_sig)
+    q_sig_filtered = costas_q_filter.pushValue(q_sig)
+
+    constellation_error = (i_sig_filtered * q_sig_filtered)  # no loop filter required! (apart from an integrator)
+    # apply scaling function (makes loop converge faster)
+    constellation_error = np.arctan(constellation_error)
+    # loop filter (integrator)
+    loop_correction += -0.001 * constellation_error
+    # loop_correction = -10
+    # end of costas loop demodulator
     dummy2plot.append(dummy2)
+    dummy3plot.append(dummy3)
     output.append(demodulated * 10)
     outbits.append(loop_correction)
     baseband.append(dummy1)
@@ -164,5 +190,5 @@ plt.plot(baseband)
 plt.plot(output)
 plt.plot(outbits)
 plt.plot(dummy2plot)
+plt.plot(dummy3plot)
 plt.show()
-

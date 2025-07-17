@@ -30,7 +30,7 @@ for i in range(len(times)):
     # apply scaling function (makes loop converge faster)
     constellation_error = np.arctan(constellation_error)
     # loop filter (integrator)
-    loop_correction += -0.01 * constellation_error
+    loop_correction += -0.001 * constellation_error
     # end of costas loop demodulator
 
     output.append(loop_correction)

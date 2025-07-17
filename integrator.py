@@ -14,6 +14,9 @@ class Integrator:
         self.accumulator = 0
         return val
 
+    def getValue(self):
+        return self.accumulator
+
 class Derivator:
     def __init__(self):
         self.previous = 0

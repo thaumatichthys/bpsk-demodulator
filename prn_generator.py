@@ -23,12 +23,12 @@ class PRNG:
         return output
 
     def getSample45(self):  # runs every sample of signal, returns signal quarter period phase advanced
-        rounded_index = int(self.phase_samples / self.samples_per_chip) + int(self.samples_per_chip / 8)
+        rounded_index = int(np.floor((self.phase_samples + self.samples_per_chip / 8) / self.samples_per_chip))
         output = self.prn_sequence[rounded_index]
         return output
 
     def getSampleMinus45(self):  # runs every sample of signal, returns signal quarter period phase advanced
-        rounded_index = int(self.phase_samples / self.samples_per_chip) - int(self.samples_per_chip / 8)
+        rounded_index = int(np.floor((self.phase_samples - self.samples_per_chip / 8) / self.samples_per_chip))
         output = self.prn_sequence[rounded_index]
         return output
 
@@ -39,8 +39,8 @@ class PRNG:
         while self.phase_samples >= self.samples_per_seq:
             self.phase_samples -= self.samples_per_seq
     def advancePhaseHalfPeriod(self):
-        self.phase_samples += int(self.samples_per_chip / 2)
+        self.phase_samples += self.samples_per_chip / 2
 
     def advancePhaseSamples(self, samples):
-        self.phase_samples += int(samples - 1)
+        self.phase_samples += samples - 1
         self.advancePhase()
