@@ -6,7 +6,7 @@ from parameters import *
 
 # data_length = int(32 * SEQ_LEN / CHIP_RATE)
 # data_input = np.random.randint(0, 2, data_length)
-input_text = "a wrinkle in falkland by margaret thatcher, an account of britdain, an extremely dank collection of events a wrinkle in falkland by margaret thatcher, an account of britdain, an extremely dank collection of events"
+input_text = "a wrinkle in falkland by margaret thatcher, an account of britdain, an extremely dank collection of events"
 
 data_input = np.unpackbits(np.frombuffer(input_text.encode("utf-8"), dtype=np.uint8)) #* 0 + 1
 data_length = len(data_input)
@@ -50,7 +50,7 @@ wavfile.write("output.wav", CARRIER_SAMPLERATE, signal_out)
 
 plt.plot(np.abs(np.fft.rfft(signal_out)))
 plt.show()
-plt.plot(signal_out)
-plt.show()
+# plt.plot(signal_out)
+# plt.show()
 
 print(prn_sequence[0:10])

@@ -24,6 +24,24 @@ class IIRFilter:
 
         return self.yvals[0]
 
+
+class FIRFilter:  # chatgpted
+    def __init__(self, coeffs):
+        """
+        coeffs: list or np.array of FIR filter taps (h[0], h[1], ..., h[N])
+        """
+        self.coeffs = np.array(coeffs)[::-1]  # reverse for convolution order
+        self.buffer = np.zeros(len(coeffs))
+
+    def push(self, x):
+        """
+        Push a new sample in and get the filtered output.
+        """
+        self.buffer = np.roll(self.buffer, 1)
+        self.buffer[0] = x
+        y = np.dot(self.buffer, self.coeffs)
+        return y
+
 # signal = np.zeros(10000)
 # signal[0] = 1
 #

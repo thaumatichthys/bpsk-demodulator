@@ -72,6 +72,14 @@ costas_q_filter = IIRFilter(costas_cutoff_frac)
 
 # end variables for costas loop
 prng.advancePhaseSamples(-43112)
+# SRRC Filter vars
+asd, h = srrc_pulse(SRRC_BETA, 1, OVERSAMPLE_RATIO / 2, SRRC_N)
+
+srrc_filt_i = FIRFilter(h)
+srrc_filt_q = FIRFilter(h)
+
+# end SRRC filter
+
 
 for i in range(len(times)):
     # giant loop
@@ -81,6 +89,13 @@ for i in range(len(times)):
 
     i_sig = (data[i] * np.cos(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t))
     q_sig = (data[i] * np.sin(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t))
+
+    # SRRC filter
+    i_sig = srrc_filt_i.push(i_sig)
+    q_sig = srrc_filt_q.push(q_sig)
+    i_sig = np.arctan(i_sig * 1000)
+    q_sig = np.arctan(q_sig * 1000)
+    # end SRRC
 
     prn = (prng.getSample0() - 0.5) * 2
     prng.advancePhase()

@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.signal import butter, filtfilt
+import matplotlib.pyplot as plt
 
 
 CHIP_RATE = 16  # this is chips per bit of data
@@ -14,41 +15,40 @@ PRN_SEED = 1
 
 
 RX_CARRIER_CENTER = 3010
-SRRC_BETA = 1
-SRRC_N = 4
+SRRC_BETA = 0.6
+SRRC_N = 1
 
 
-def srrc_pulse(beta, T, sps, N):
-    """
-    Generate Square Root Raised Cosine (SRRC) filter impulse response.
-
-    Parameters:
-    - beta: roll-off factor (0 to 1)
-    - T: symbol period (can be 1 if normalized)
-    - sps: samples per symbol (oversampling factor)
-    - N: number of symbols on each side (filter length = 2*N*sps + 1)
-
-    Returns:
-    - t: time vector
-    - h: impulse response of SRRC filter
-    """
-    t = np.arange(-N * T, N * T + T / sps, T / sps)
+def srrc_pulse(beta, T, sps, N_sym):
+    # Time vector
+    t = np.arange(-N_sym*T, N_sym*T + T/sps, T/sps)
+    pi = np.pi
     h = np.zeros_like(t)
 
-    for i in range(len(t)):
-        if t[i] == 0.0:
-            h[i] = 1.0 - beta + (4 * beta / np.pi)
-        elif abs(t[i]) == T / (4 * beta):
-            h[i] = (beta / np.sqrt(2)) * (
-                    (1 + 2 / np.pi) * np.sin(np.pi / (4 * beta)) +
-                    (1 - 2 / np.pi) * np.cos(np.pi / (4 * beta))
-            )
-        else:
-            h[i] = (np.sin(np.pi * t[i] * (1 - beta) / T) +
-                    4 * beta * t[i] / T * np.cos(np.pi * t[i] * (1 + beta) / T)) / \
-                   (np.pi * t[i] * (1 - (4 * beta * t[i] / T) ** 2) / T)
+    # General case
+    denom = pi * t * (1 - (4 * beta * t / T)**2) / T
+    num   = np.sin(pi * t * (1 - beta) / T) + \
+            4 * beta * t / T * np.cos(pi * t * (1 + beta) / T)
+    h = num / denom
+
+    # Handle t == 0
+    idx0 = np.isclose(t, 0.0)
+    h[idx0] = (1 + beta*(4/pi - 1))
+
+    # Handle |t| == T/(4*beta)
+    if beta != 0:
+        idx1 = np.isclose(np.abs(t), T/(4*beta))
+        h[idx1] = (beta/np.sqrt(2)) * (
+            (1 + 2/pi)*np.sin(pi/(4*beta)) +
+            (1 - 2/pi)*np.cos(pi/(4*beta))
+        )
 
     # Normalize energy
-    h = h / np.sqrt(np.sum(h ** 2))
+    h = h / np.sqrt(np.sum(h**2))
 
     return t, h
+
+# asd, h = srrc_pulse(SRRC_BETA, 1, OVERSAMPLE_RATIO, SRRC_N)
+# print(h)
+# plt.plot(h)
+# plt.show()
