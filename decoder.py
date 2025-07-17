@@ -53,7 +53,7 @@ q_late_integrator = Integrator()
 
 seq_len_samplerate = DATA_BITRATE * CHIP_RATE / SEQ_LEN
 # make this filter 1/4 of sequence frequency (filter for the dsss track)
-error_filt = IIRFilter(1/16)
+# error_filt = IIRFilter(1/16)
 # dummy_integrator = Integrator()
 
 dummy2 = 0
@@ -81,6 +81,11 @@ peak_finder = PeakFinder(SEQ_LEN, PEAK_FINDER_MIN_ABOVE_AVERAGE)
 
 # end vars for alignment peak detector
 
+# vars for data clock recovery
+edge_det = Derivator()
+
+# end vars for data clock recovery
+
 for i in range(len(times)):
     # giant loop
     t = times[i]
@@ -104,19 +109,14 @@ for i in range(len(times)):
         i_integrator.accumulate(despread_i * despread_i)
         q_integrator.accumulate(despread_q * despread_q)
 
-        # demodulated = despread_q
-
         if i % (samples_per_chip * SEQ_LEN) == 0:
             i_integral = i_integrator.dumpValue()
             q_integral = q_integrator.dumpValue()
             correlation_energy = i_integral + q_integral
             print(f"correlation energy: {correlation_energy}")
 
-            # this must be changed to a dynamic threshold later
+            # this is a dynamic threshold later
             found, delta_halfPeriods = peak_finder.pushValue(correlation_energy)
-
-            # if correlation_energy > 25000:
-            #     print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 25k point at {dummy4}")
 
             if found:
                 # alignment found, now scroll back to it
@@ -124,13 +124,8 @@ for i in range(len(times)):
                 receiver_state = RX_STATE_TRACK
                 print(f"FOUND!!!!!!!!!!!!!!!!! {peak_finder.max_val}, dummy4 = {dummy4}, delta = {delta_halfPeriods}")
             else:
-                #if receiver_state == RX_STATE_ACQ:
                 prng.advancePhaseHalfPeriod()
-            # if correlation_energy > 5000:
-                # alignment found
-            #     receiver_state = RX_STATE_TRACK
-            # dummy4 += 1
-            # dummy1 = correlation_energy
+
     elif receiver_state == RX_STATE_TRACK:
         # track
         prn_early = (prng.getSample45() - 0.5) * 2
@@ -142,7 +137,6 @@ for i in range(len(times)):
         i_late_despread = i_late_filt.pushValue(i_sig * prn_late)
         q_late_despread = i_late_filt.pushValue(q_sig * prn_late)
         demodulated = despread_i
-        # demodulated = i_early_despread * 20
 
         i_early_integrator.accumulate(i_early_despread * i_early_despread)
         q_early_integrator.accumulate(q_early_despread * q_early_despread)
@@ -159,7 +153,7 @@ for i in range(len(times)):
             correlation_energy_late = i_late_integral + q_late_integral
 
             alignment_error_raw = correlation_energy_late - correlation_energy_early
-            # alignment_error = error_filt.pushValue(alignment_error_raw)
+
             alignment_error = (alignment_error_raw)
 
             d_term = derivator.pushValue(alignment_error)
@@ -174,14 +168,17 @@ for i in range(len(times)):
 
             # dummy2 = d_term * 0.01 * 1000
             # dummy1 = alignment_error * 0.001 * 1000
-            dummy1 = error_output
+            # dummy1 = error_output
             print(f"alignment error: {error_output}")
 
-        # print(f"loop correction: {loop_correction}")
-        #dummy1 = prn_early - 2.5
-        #dummy2 = prn_late + 2.5
-        dummy2 = prn_aligned - 2.5
-        dummy3 = error_filt.pushValue(i_sig)
+        data_bit = np.sign(demodulated)
+
+        edges = np.abs(edge_det.pushValue(data_bit))
+
+        dummy2 = edges
+
+        dummy3 = data_bit
+        # dummy3 = error_filt.pushValue(i_sig)
 
     # costas loop
     i_sig_filtered = costas_i_filter.pushValue(i_sig)
@@ -192,7 +189,7 @@ for i in range(len(times)):
     constellation_error = np.arctan(constellation_error)
     # loop filter (integrator)
     loop_correction += -0.0002 * constellation_error
-    # loop_correction = -10
+    # loop_correction += -0.00005 * constellation_error
     # end of costas loop demodulator
     dummy2plot.append(dummy2)
     dummy3plot.append(dummy3)

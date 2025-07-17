@@ -39,14 +39,14 @@ shaped_data = np.convolve(shaped_data, h)
 
 signal_out = np.cos(t * 2*np.pi * CARRIER_CENTER) * shaped_data[0:len(t)]
 
-signal_out += (np.random.random(len(signal_out)) - 0.5) * 5
+signal_out += (np.random.random(len(signal_out)) - 0.5) * 0
 
 wavfile.write("output.wav", CARRIER_SAMPLERATE, signal_out)
 
 
 plt.plot(np.abs(np.fft.rfft(signal_out)))
 plt.show()
-plt.plot(signal_out)
-plt.show()
+# plt.plot(signal_out)
+# plt.show()
 
 print(prn_sequence[0:10])

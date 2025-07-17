@@ -3,10 +3,10 @@ from scipy.signal import butter, filtfilt
 import matplotlib.pyplot as plt
 
 
-CHIP_RATE = 64  # this is chips per bit of data
+CHIP_RATE = 128  # this is chips per bit of data
 SEQ_LEN = 64
 DATA_BITRATE = 50  # this is baud rate of the data (not chip rate)
-OVERSAMPLE_RATIO = 15  # this need to be integer (see below)
+OVERSAMPLE_RATIO = 8  # this need to be integer (see below)
 CARRIER_SAMPLERATE = CHIP_RATE * DATA_BITRATE * OVERSAMPLE_RATIO  # this should be an integer multiple of chip rate * data bitrate
 CARRIER_CENTER = 6000
 BW_LIMIT = 2500
@@ -14,7 +14,7 @@ BW_LIMIT = 2500
 PRN_SEED = 1
 
 
-RX_CARRIER_CENTER = 6010-23
+RX_CARRIER_CENTER = 6000.3
 RAISED_COSINE_BETA = 0.6
 RAISED_COSINE_N = 1
 
