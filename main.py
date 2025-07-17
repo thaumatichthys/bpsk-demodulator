@@ -6,8 +6,8 @@ from parameters import *
 
 # data_length = int(32 * SEQ_LEN / CHIP_RATE)
 # data_input = np.random.randint(0, 2, data_length)
-input_text = ("a wrinkle in falkland by margaret thatcher, an account of britdain, an extremely dank collection of events" +
-              "")
+input_text = ("~~~~~~~~~~~~~~~~~~~a wrinkle in falkland by margaret thatcher, an account of britdain, an extremely dank collection of events" +
+              "\nDid you know that if you eat rocks, it will taste very bad? I did not, personally.")
 
 data_input = np.unpackbits(np.frombuffer(input_text.encode("utf-8"), dtype=np.uint8)) # * 0 + 1
 data_length = len(data_input)
@@ -44,7 +44,7 @@ signal_out = np.cos(t * 2*np.pi * CARRIER_CENTER) * shaped_data[0:len(t)]
 # normalize to 1
 signal_out /= np.max(np.abs(signal_out))
 
-signal_out += (np.random.random(len(signal_out)) - 0.5) * 3
+# signal_out += (np.random.random(len(signal_out)) - 0.5) * 3
 
 wavfile.write("output.wav", CARRIER_SAMPLERATE, signal_out)
 
