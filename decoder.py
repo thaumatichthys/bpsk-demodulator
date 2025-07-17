@@ -88,10 +88,12 @@ peak_finder = PeakFinder(SEQ_LEN, PEAK_FINDER_MIN_ABOVE_AVERAGE)
 # end vars for alignment peak detector
 
 # vars for data clock recovery
-edge_det = Derivator()
+bit_edge_detector = Derivator()  # for finding edges of data bits
 clock_recovery_pll = ClockPLL2(CARRIER_SAMPLERATE, DATA_BITRATE, 10)
 clock_recovery_loop_correction = 0
 output_bits = []
+lo_derivator = Derivator()  # for derivating the PLL lo
+lo_edge_detector = Derivator()  # for finding edges of PLL lo
 # end vars for data clock recovery
 
 for i in range(len(times)):
@@ -200,18 +202,19 @@ for i in range(len(times)):
 
 
         # clock recovery system
-        edges = np.abs(edge_det.pushValue(data_bit))
+        edges = 100 * np.abs(bit_edge_detector.pushValue(data_bit))
         clock_LO = np.cos(2 * np.pi * (DATA_BITRATE + clock_recovery_loop_correction) * t)
         clock_recovery_loop_correction = clock_recovery_pll.update(edges, clock_LO)
+        clock_output = np.sign(lo_derivator.pushValue(clock_LO))
 
 
-        if edges > 0:
+        if lo_edge_detector.pushValue(clock_output) > 0:
             output_bits.append(int(data_bit / 2 + 1))
 
-        dummy2 = clock_LO + 2.2
+        dummy2 = clock_LO
 
         dummy3 = data_bit
-        dummy3 = clock_recovery_pll.dummy
+        # dummy3 = clock_recovery_pll.dummy
 
 
     dummy2plot.append(dummy2)

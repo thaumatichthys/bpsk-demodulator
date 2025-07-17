@@ -74,15 +74,26 @@ class FIRFilter:  # chatgpted
         y = np.dot(self.buffer, self.coeffs)
         return y
 
+class DCBlocker:
+    def __init__(self, alpha=0.995):
+        self.alpha = alpha
+        self.prev_x = 0.0
+        self.prev_y = 0.0
+
+    def push(self, x):
+        y = x - self.prev_x + self.alpha * self.prev_y
+        self.prev_x = x
+        self.prev_y = y
+        return y
+
 #
-# print(butter(N=2, Wn=[.3, .6], btype='bandpass'))
 # signal = np.zeros(10000)
 # signal[0] = 1
 #
 # output = []
 #
 # # filter = IIRFilter(0.2)
-# filter = IIR_BPF(4, 2, 0.4, 0.5)
+# filter = IIR_BPF(2, 51200, 90, 110)
 # for i in range(len(signal)):
 #     output.append(filter.pushValue(signal[i]))
 #

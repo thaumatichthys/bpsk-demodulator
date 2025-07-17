@@ -51,7 +51,7 @@ class ClockRecovery:
 class ClockPLL2:
     def __init__(self, samplerate, bit_freq, bitrate_dev):
 
-        self.input_filter = IIR_BPF(4, samplerate, bit_freq - bitrate_dev, bit_freq + bitrate_dev)
+        self.input_filter = IIR_BPF(2, samplerate, bit_freq - bitrate_dev, bit_freq + bitrate_dev)
 
 
         self.bit_freq = bit_freq
@@ -61,18 +61,16 @@ class ClockPLL2:
         self.pfd = PFD()
         self.dummy = 0
 
-        self.dc_remove_accumulate = 0
-        self.dc_remove_n = 0
+        self.dc_blocker = DCBlocker()
 
 
     def update(self, input_val, lo_in):  # LO must be a clean sinusoid with zero DC offset.
-        dc_removed = input_val - self.dc_remove_accumulate / self.dc_remove_n
         cleaned = self.input_filter.pushValue(input_val)
         self.dummy = cleaned
-        print(cleaned)
+        # print(dc_removed)
         zero_cross = np.sign(cleaned)  # turns into square wave
         local = np.sign(lo_in)
-        error = 0.00025 * (self.pfd.update(local, zero_cross))
+        error = 0.000025 * (self.pfd.update(local, zero_cross))
         self.loop_correction -= error
 
         if np.abs(self.loop_correction) > self.bitrate_dev:
