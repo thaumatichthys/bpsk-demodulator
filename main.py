@@ -39,7 +39,7 @@ shaped_data = np.convolve(shaped_data, h)
 
 signal_out = np.cos(t * 2*np.pi * CARRIER_CENTER) * shaped_data[0:len(t)]
 
-signal_out += (np.random.random(len(signal_out)) - 0.5) * 0
+signal_out += (np.random.random(len(signal_out)) - 0.5) * 5
 
 wavfile.write("output.wav", CARRIER_SAMPLERATE, signal_out)
 
