@@ -22,7 +22,7 @@ pfd = PFD()
 dummy = 0
 
 baseband = []
-
+print(times)
 for i in range(len(times)):
     t = times[i]
 

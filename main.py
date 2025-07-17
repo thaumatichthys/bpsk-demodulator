@@ -9,7 +9,7 @@ from parameters import *
 input_text = ("a wrinkle in falkland by margaret thatcher, an account of britdain, an extremely dank collection of events" +
               "")
 
-data_input = np.unpackbits(np.frombuffer(input_text.encode("utf-8"), dtype=np.uint8)) # * 0 + 1
+data_input = np.unpackbits(np.frombuffer(input_text.encode("utf-8"), dtype=np.uint8)) * 0 + 1
 data_length = len(data_input)
 
 num_seqs = np.ceil(data_length * CHIP_RATE / SEQ_LEN)
@@ -39,7 +39,7 @@ shaped_data = np.convolve(shaped_data, h)
 
 signal_out = np.cos(t * 2*np.pi * CARRIER_CENTER) * shaped_data[0:len(t)]
 
-signal_out += (np.random.random(len(signal_out)) - 0.5) * 20
+signal_out += (np.random.random(len(signal_out)) - 0.5) * 00
 
 wavfile.write("output.wav", CARRIER_SAMPLERATE, signal_out)
 

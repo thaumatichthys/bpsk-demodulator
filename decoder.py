@@ -6,6 +6,9 @@ from iirfilter import *
 from prn_generator import *
 from integrator import *
 from peak_finder import *
+from squaring_loop import *
+
+USE_COSTAS_LOOP = False
 
 samplerate, data = wavfile.read("output.wav")
 
@@ -72,6 +75,8 @@ costas_cutoff_frac = 4 * (CHIP_RATE * DATA_BITRATE) / CARRIER_SAMPLERATE
 costas_i_filter = IIRFilter(costas_cutoff_frac)
 costas_q_filter = IIRFilter(costas_cutoff_frac)
 
+squaring_loop = SquaringLoop(CARRIER_SAMPLERATE, RX_CARRIER_CENTER, PLL_MAX_DEVIATION)
+
 # end variables for costas loop
 prng.advancePhaseSamples(-43112)
 
@@ -91,9 +96,28 @@ for i in range(len(times)):
     t = times[i]
 
     input = data[i]
+    LO_i = np.cos(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t)
+    LO_q = np.sin(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t)
 
-    i_sig = (data[i] * np.cos(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t))
-    q_sig = (data[i] * np.sin(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t))
+    # costas loop
+    if USE_COSTAS_LOOP:
+        i_sig_filtered = costas_i_filter.pushValue(i_sig)
+        q_sig_filtered = costas_q_filter.pushValue(q_sig)
+
+        constellation_error = (i_sig_filtered * q_sig_filtered)  # no loop filter required! (apart from an integrator)
+        # apply scaling function (makes loop converge faster)
+        constellation_error = np.arctan(constellation_error)
+        # loop filter (integrator)
+        loop_correction += -0.0002 * constellation_error
+        # loop_correction += -0.00005 * constellation_error
+        # end of costas loop demodulator
+    else:
+        loop_correction = -squaring_loop.update(input, LO_i)
+        #loop_correction = squaring_loop.loop_correction
+
+
+    i_sig = (data[i] * LO_i)
+    q_sig = (data[i] * LO_q)
 
     prn = (prng.getSample0() - 0.5) * 2
     prng.advancePhase()
@@ -180,17 +204,7 @@ for i in range(len(times)):
         dummy3 = data_bit
         # dummy3 = error_filt.pushValue(i_sig)
 
-    # costas loop
-    i_sig_filtered = costas_i_filter.pushValue(i_sig)
-    q_sig_filtered = costas_q_filter.pushValue(q_sig)
 
-    constellation_error = (i_sig_filtered * q_sig_filtered)  # no loop filter required! (apart from an integrator)
-    # apply scaling function (makes loop converge faster)
-    constellation_error = np.arctan(constellation_error)
-    # loop filter (integrator)
-    loop_correction += -0.0002 * constellation_error
-    # loop_correction += -0.00005 * constellation_error
-    # end of costas loop demodulator
     dummy2plot.append(dummy2)
     dummy3plot.append(dummy3)
     output.append(demodulated * 10)
