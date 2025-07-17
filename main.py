@@ -9,7 +9,7 @@ from parameters import *
 input_text = ("a wrinkle in falkland by margaret thatcher, an account of britdain, an extremely dank collection of events" +
               "")
 
-data_input = np.unpackbits(np.frombuffer(input_text.encode("utf-8"), dtype=np.uint8)) * 0 + 1
+data_input = np.unpackbits(np.frombuffer(input_text.encode("utf-8"), dtype=np.uint8)) # * 0 + 1
 data_length = len(data_input)
 
 num_seqs = np.ceil(data_length * CHIP_RATE / SEQ_LEN)
@@ -29,6 +29,8 @@ dsss_bits = np.bitwise_xor(prn_total, data_input_upsampled_padded)
 dsss_bits_upsampled = np.repeat(dsss_bits, int(CARRIER_SAMPLERATE / (CHIP_RATE * DATA_BITRATE)))
 duration = len(data_input_upsampled_padded) / DATA_BITRATE / CHIP_RATE
 t = np.linspace(0, duration, int(CARRIER_SAMPLERATE * duration))
+
+# t = np.pow(t, 1 - .0005)
 
 # pulse shaping start
 shaped_data = (2 * dsss_bits_upsampled - 1)

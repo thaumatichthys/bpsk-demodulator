@@ -7,6 +7,7 @@ from prn_generator import *
 from integrator import *
 from peak_finder import *
 from squaring_loop import *
+from clock_recovery import *
 
 USE_COSTAS_LOOP = False
 
@@ -88,7 +89,9 @@ peak_finder = PeakFinder(SEQ_LEN, PEAK_FINDER_MIN_ABOVE_AVERAGE)
 
 # vars for data clock recovery
 edge_det = Derivator()
+clock_recovery = ClockRecovery(CARRIER_SAMPLERATE, DATA_BITRATE)
 
+output_bits = []
 # end vars for data clock recovery
 
 for i in range(len(times)):
@@ -190,16 +193,20 @@ for i in range(len(times)):
 
             prng.advancePhaseSamples(error_output)
 
-            # dummy2 = d_term * 0.01 * 1000
-            # dummy1 = alignment_error * 0.001 * 1000
-            # dummy1 = error_output
-            print(f"alignment error: {error_output}")
+            # print(f"alignment error: {error_output}")
 
         data_bit = np.sign(demodulated)
 
-        edges = np.abs(edge_det.pushValue(data_bit))
 
-        dummy2 = edges
+
+        # clock recovery system
+        clock_bit = clock_recovery.update(data_bit)
+        edges = np.abs(edge_det.pushValue(clock_bit))
+
+        if edges > 0:
+            output_bits.append(int(data_bit / 2 + 1))
+
+        dummy2 = clock_bit + 2.2
 
         dummy3 = data_bit
         # dummy3 = error_filt.pushValue(i_sig)
@@ -207,14 +214,20 @@ for i in range(len(times)):
 
     dummy2plot.append(dummy2)
     dummy3plot.append(dummy3)
-    output.append(demodulated * 10)
+    # output.append(demodulated * 10)
     outbits.append(loop_correction)
-    baseband.append(dummy1)
+    # baseband.append(dummy1)
 
 
 
-print(samplerate)
-
+output_bits = np.array(output_bits)
+bitstring = ''.join(output_bits.astype(str))
+print(bitstring)  # Output: "1011"
+print("inverted:")
+bitstring = ''.join((1 - output_bits).astype(str))
+print(bitstring)
+print(" ")
+print("asd")
 # plt.plot(abs(np.fft.rfft(baseband)))
 # plt.plot(np.cos(2 * np.pi * CARRIER_CENTER * times))
 plt.plot(baseband)
