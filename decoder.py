@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from iirfilter import *
 from prn_generator import *
 from integrator import *
+from peak_finder import *
 
 samplerate, data = wavfile.read("output.wav")
 
@@ -60,26 +61,25 @@ dummy2plot = []
 
 dummy3 = 0
 dummy3plot = []
+dummy4 = 0
 
 derivator = Derivator()
 # end variables for tracking
 
 # variables for costas loop
-costas_cutoff_frac = 2 * (CHIP_RATE * DATA_BITRATE) / CARRIER_SAMPLERATE
+costas_cutoff_frac = 4 * (CHIP_RATE * DATA_BITRATE) / CARRIER_SAMPLERATE
 # loop_filter = IIRFilter(1/10)
 costas_i_filter = IIRFilter(costas_cutoff_frac)
 costas_q_filter = IIRFilter(costas_cutoff_frac)
 
 # end variables for costas loop
 prng.advancePhaseSamples(-43112)
-# SRRC Filter vars
-asd, h = srrc_pulse(SRRC_BETA, 1, OVERSAMPLE_RATIO / 2, SRRC_N)
 
-srrc_filt_i = FIRFilter(h)
-srrc_filt_q = FIRFilter(h)
+# variables for alignment peak detector
+peak_finder = PeakFinder(SEQ_LEN, PEAK_FINDER_MIN_ABOVE_AVERAGE)
 
-# end SRRC filter
 
+# end vars for alignment peak detector
 
 for i in range(len(times)):
     # giant loop
@@ -89,13 +89,6 @@ for i in range(len(times)):
 
     i_sig = (data[i] * np.cos(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t))
     q_sig = (data[i] * np.sin(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t))
-
-    # SRRC filter
-    i_sig = srrc_filt_i.push(i_sig)
-    q_sig = srrc_filt_q.push(q_sig)
-    i_sig = np.arctan(i_sig * 1000)
-    q_sig = np.arctan(q_sig * 1000)
-    # end SRRC
 
     prn = (prng.getSample0() - 0.5) * 2
     prng.advancePhase()
@@ -111,22 +104,34 @@ for i in range(len(times)):
         i_integrator.accumulate(despread_i * despread_i)
         q_integrator.accumulate(despread_q * despread_q)
 
-        demodulated = despread_q
+        # demodulated = despread_q
 
         if i % (samples_per_chip * SEQ_LEN) == 0:
             i_integral = i_integrator.dumpValue()
             q_integral = q_integrator.dumpValue()
             correlation_energy = i_integral + q_integral
-            # print(correlation_energy)
+            print(f"correlation energy: {correlation_energy}")
 
             # this must be changed to a dynamic threshold later
-            if correlation_energy > 400:
-                # alignment found
+            found, delta_halfPeriods = peak_finder.pushValue(correlation_energy)
+
+            # if correlation_energy > 25000:
+            #     print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 25k point at {dummy4}")
+
+            if found:
+                # alignment found, now scroll back to it
+                prng.advancePhaseNHalfPeriods(delta_halfPeriods)
                 receiver_state = RX_STATE_TRACK
+                print(f"FOUND!!!!!!!!!!!!!!!!! {peak_finder.max_val}, dummy4 = {dummy4}, delta = {delta_halfPeriods}")
             else:
+                #if receiver_state == RX_STATE_ACQ:
                 prng.advancePhaseHalfPeriod()
+            # if correlation_energy > 5000:
+                # alignment found
+            #     receiver_state = RX_STATE_TRACK
+            # dummy4 += 1
             # dummy1 = correlation_energy
-    else:
+    elif receiver_state == RX_STATE_TRACK:
         # track
         prn_early = (prng.getSample45() - 0.5) * 2
         prn_late = (prng.getSampleMinus45() - 0.5) * 2
@@ -161,7 +166,7 @@ for i in range(len(times)):
 
             error_output = -(0.015 * alignment_error + 0.001 * d_term)
 
-            MAX_ERROR_OUT = 0.2
+            MAX_ERROR_OUT = 0.8
             if np.abs(error_output) > MAX_ERROR_OUT:
                 error_output = error_output * MAX_ERROR_OUT / np.abs(error_output)
 
@@ -169,7 +174,7 @@ for i in range(len(times)):
 
             # dummy2 = d_term * 0.01 * 1000
             # dummy1 = alignment_error * 0.001 * 1000
-            # dummy1 = error_output
+            dummy1 = error_output
             print(f"alignment error: {error_output}")
 
         # print(f"loop correction: {loop_correction}")
@@ -186,7 +191,7 @@ for i in range(len(times)):
     # apply scaling function (makes loop converge faster)
     constellation_error = np.arctan(constellation_error)
     # loop filter (integrator)
-    loop_correction += -0.001 * constellation_error
+    loop_correction += -0.0002 * constellation_error
     # loop_correction = -10
     # end of costas loop demodulator
     dummy2plot.append(dummy2)

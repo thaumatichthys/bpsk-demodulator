@@ -3,10 +3,10 @@ from scipy.signal import butter, filtfilt
 import matplotlib.pyplot as plt
 
 
-CHIP_RATE = 16  # this is chips per bit of data
+CHIP_RATE = 32  # this is chips per bit of data
 SEQ_LEN = 64
 DATA_BITRATE = 50  # this is baud rate of the data (not chip rate)
-OVERSAMPLE_RATIO = 60  # this need to be integer (see below)
+OVERSAMPLE_RATIO = 30  # this need to be integer (see below)
 CARRIER_SAMPLERATE = CHIP_RATE * DATA_BITRATE * OVERSAMPLE_RATIO  # this should be an integer multiple of chip rate * data bitrate
 CARRIER_CENTER = 3000
 BW_LIMIT = 2500
@@ -15,36 +15,36 @@ PRN_SEED = 1
 
 
 RX_CARRIER_CENTER = 3010
-SRRC_BETA = 0.6
-SRRC_N = 1
+RAISED_COSINE_BETA = 0.6
+RAISED_COSINE_N = 1
+
+PEAK_FINDER_MIN_ABOVE_AVERAGE = 3
 
 
-def srrc_pulse(beta, T, sps, N_sym):
-    # Time vector
-    t = np.arange(-N_sym*T, N_sym*T + T/sps, T/sps)
+def raised_cosine(beta, T, sps, N_sym):
+    t = np.arange(-N_sym * T, N_sym * T + T / sps, T / sps)
     pi = np.pi
-    h = np.zeros_like(t)
 
-    # General case
-    denom = pi * t * (1 - (4 * beta * t / T)**2) / T
-    num   = np.sin(pi * t * (1 - beta) / T) + \
-            4 * beta * t / T * np.cos(pi * t * (1 + beta) / T)
-    h = num / denom
+    # Precompute to avoid div0
+    x = t / T
+    four_beta_x = 2 * beta * x
+
+    # Main formula: h(t) = sinc(x) * cos(pi beta x) / (1 - (2 beta x)^2)
+    h = np.sinc(x) * np.cos(pi * beta * x) / (1 - four_beta_x ** 2)
 
     # Handle t == 0
     idx0 = np.isclose(t, 0.0)
-    h[idx0] = (1 + beta*(4/pi - 1))
+    h[idx0] = 1.0
 
-    # Handle |t| == T/(4*beta)
+    # Handle |t| == T/(2β)
     if beta != 0:
-        idx1 = np.isclose(np.abs(t), T/(4*beta))
-        h[idx1] = (beta/np.sqrt(2)) * (
-            (1 + 2/pi)*np.sin(pi/(4*beta)) +
-            (1 - 2/pi)*np.cos(pi/(4*beta))
-        )
+        idx1 = np.isclose(np.abs(t), T / (2 * beta))
+        # limit: h(T/(2β)) = (β/2) * sinc(1/(2β))
+        val = (beta / 2) * np.sinc(1 / (2 * beta))
+        h[idx1] = val
 
-    # Normalize energy
-    h = h / np.sqrt(np.sum(h**2))
+    # Normalize to unit energy
+    h = h / np.sqrt(np.sum(h ** 2))
 
     return t, h
 

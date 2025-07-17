@@ -44,3 +44,7 @@ class PRNG:
     def advancePhaseSamples(self, samples):
         self.phase_samples += samples - 1
         self.advancePhase()
+
+    def advancePhaseNHalfPeriods(self, n):
+        self.phase_samples += n * self.samples_per_chip / 2 - 1
+        self.advancePhase()

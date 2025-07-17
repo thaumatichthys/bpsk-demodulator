@@ -19,33 +19,18 @@ loop_correction = 0
 
 baseband = []
 
-asd, h = srrc_pulse(SRRC_BETA, 1, OVERSAMPLE_RATIO / 2, SRRC_N)
-
-srrc_filt_i = FIRFilter(h)
-srrc_filt_q = FIRFilter(h)
-
 for i in range(len(times)):
     # giant loop
     t = times[i]
-
-    input = data[i]
-
     # costas loop
-    i_sig_nosrrc = i_filt.pushValue(input * np.cos(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t))
-    q_sig_nosrrc = q_filt.pushValue(input * np.sin(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t))
-
-    # SRRC filter
-    i_sig = srrc_filt_i.push(i_sig_nosrrc)
-    q_sig = srrc_filt_q.push(q_sig_nosrrc)
-    i_sig = np.arctan(i_sig * 1000)
-    q_sig = np.arctan(q_sig * 1000)
-    # end SRRC
+    i_sig = i_filt.pushValue(data[i] * np.cos(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t))
+    q_sig = q_filt.pushValue(data[i] * np.sin(2 * np.pi * (RX_CARRIER_CENTER + loop_correction) * t))
 
     constellation_error = i_sig * q_sig  # no loop filter required! (apart from an integrator)
     # apply scaling function (makes loop converge faster)
     constellation_error = np.arctan(constellation_error)
     # loop filter (integrator)
-    loop_correction += -0.00025 * constellation_error
+    loop_correction += -0.001 * constellation_error
     # end of costas loop demodulator
 
     output.append(loop_correction)
